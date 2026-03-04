@@ -1,0 +1,12 @@
+.git
+.gitignore
+README.md
+*.md
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.github
+helm/

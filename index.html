@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Picker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">&#127916;</span>
+        <span class="logo-text">MOVIE PICKER</span>
+      </div>
+      <p class="subtitle">500 films. One random pick. Zero regrets.</p>
+    </header>
+
+    <main class="main">
+      <div class="card" id="movieCard">
+        <div class="card-inner" id="cardInner">
+          <div class="card-placeholder" id="placeholder">
+            <div class="placeholder-icon">?</div>
+            <p>Your next favorite movie is one click away</p>
+          </div>
+          <div class="card-result hidden" id="result">
+            <div class="result-label">TONIGHT YOU WATCH</div>
+            <h1 class="result-title" id="movieTitle"></h1>
+            <div class="result-number" id="movieNumber"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="pickBtn">
+          <span class="btn-text">Pick a Movie</span>
+          <span class="btn-icon">&#10132;</span>
+        </button>
+      </div>
+
+      <div class="history hidden" id="historySection">
+        <h3 class="history-title">Previously Picked</h3>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p>Curated from 500 acclaimed films across every era and genre</p>
+    </footer>
+  </div>
+
+  <script src="movies.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: movie-picker
+description: A Helm chart for deploying the movie-picker static web app
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - movie-picker
+  - static-site
+  - nginx
+home: https://github.com/georg-nikola/movie-picker
+sources:
+  - https://github.com/georg-nikola/movie-picker
+maintainers:
+  - name: Georg Nikola
+    email: dev@georg-nikola.com
