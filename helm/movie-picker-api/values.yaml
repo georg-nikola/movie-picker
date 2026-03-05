@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  registry: ghcr.io
+  repository: georg-nikola/movie-picker-api
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "movie-picker-api"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  host: movie-picker.example.com
+
+env:
+  DATABASE_URL: "postgresql+asyncpg://moviepicker:password@postgresql.default.svc.cluster.local:5432/moviepicker"
+  JWT_SECRET: "change-me"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USER: ""
+  SMTP_PASSWORD: ""
+  SMTP_FROM: ""
+  TEST_OTP_CODE: ""
+
+existingSecret: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule

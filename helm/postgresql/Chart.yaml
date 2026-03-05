@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgresql
+description: PostgreSQL StatefulSet for movie-picker
+type: application
+version: 1.0.0
+appVersion: "16.1"

@@ -1,55 +1,303 @@
 (function () {
   "use strict";
 
-  const pickBtn = document.getElementById("pickBtn");
-  const cardInner = document.getElementById("cardInner");
-  const placeholder = document.getElementById("placeholder");
-  const result = document.getElementById("result");
-  const movieTitle = document.getElementById("movieTitle");
-  const movieNumber = document.getElementById("movieNumber");
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const pickBtn       = document.getElementById("pickBtn");
+  const cardInner     = document.getElementById("cardInner");
+  const placeholder   = document.getElementById("placeholder");
+  const result        = document.getElementById("result");
   const historySection = document.getElementById("historySection");
-  const historyList = document.getElementById("historyList");
-  const btnText = pickBtn.querySelector(".btn-text");
+  const historyList   = document.getElementById("historyList");
+  const btnText       = pickBtn.querySelector(".btn-text");
 
-  let history = [];
-  let lastIndex = -1;
+  // Auth bar
+  const loginBtn      = document.getElementById("loginBtn");
+  const logoutBtn     = document.getElementById("logoutBtn");
+  const authUser      = document.getElementById("authUser");
+
+  // Watched
+  const watchedBtn    = document.getElementById("watchedBtn");
+  const watchedFilter = document.getElementById("watchedFilter");
+  const filterCheckbox = document.getElementById("filterWatched");
+
+  // Modal
+  const authModal     = document.getElementById("authModal");
+  const modalClose    = document.getElementById("modalClose");
+  const modalTabs     = document.getElementById("modalTabs");
+  const loginForm     = document.getElementById("loginForm");
+  const registerForm  = document.getElementById("registerForm");
+  const otpForm       = document.getElementById("otpForm");
+  const otpEmailSpan  = document.getElementById("otpEmail");
+  const otpResendBtn  = document.getElementById("otpResend");
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let history     = [];
+  let lastIndex   = -1;
+  let currentTitle = "";
+
+  let authToken   = localStorage.getItem("mp_token") || "";
+  let authEmail   = localStorage.getItem("mp_email") || "";
+  let watchedSet  = new Set();
+  let pendingEmail = "";
+  let pendingAction = ""; // "login" | "register"
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  async function apiCall(method, path, body) {
+    const opts = {
+      method,
+      headers: { "Content-Type": "application/json" },
+    };
+    if (authToken) opts.headers["Authorization"] = "Bearer " + authToken;
+    if (body)      opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.detail || "Request failed");
+    return json;
+  }
+
+  async function fetchWatched() {
+    if (!authToken) return;
+    try {
+      const data = await apiCall("GET", "/api/watched");
+      watchedSet = new Set(data.watched);
+      watchedFilter.classList.remove("hidden");
+    } catch (e) {
+      if (e.message.includes("401") || e.message === "Invalid token" || e.message === "User not found") {
+        doLogout();
+      }
+    }
+  }
+
+  async function addWatched(title) {
+    await apiCall("POST", "/api/watched", { movie_title: title });
+    watchedSet.add(title);
+  }
+
+  async function removeWatched(title) {
+    await apiCall("DELETE", "/api/watched/" + encodeURIComponent(title));
+    watchedSet.delete(title);
+  }
+
+  // ── Auth helpers ──────────────────────────────────────────────────────────
+  function updateAuthUI() {
+    if (authToken) {
+      loginBtn.classList.add("hidden");
+      authUser.textContent = authEmail;
+      authUser.classList.remove("hidden");
+      logoutBtn.classList.remove("hidden");
+    } else {
+      loginBtn.classList.remove("hidden");
+      authUser.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+      watchedFilter.classList.add("hidden");
+      watchedBtn.classList.add("hidden");
+    }
+  }
+
+  function doLogout() {
+    authToken = "";
+    authEmail = "";
+    watchedSet = new Set();
+    localStorage.removeItem("mp_token");
+    localStorage.removeItem("mp_email");
+    updateAuthUI();
+    updateWatchedBtn();
+  }
+
+  function saveAuth(token, email) {
+    authToken = token;
+    authEmail = email;
+    localStorage.setItem("mp_token", token);
+    localStorage.setItem("mp_email", email);
+    updateAuthUI();
+    fetchWatched();
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  function openModal(tab) {
+    authModal.classList.remove("hidden");
+    showTab(tab || "login");
+  }
+
+  function closeModal() {
+    authModal.classList.add("hidden");
+    clearErrors();
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll(".modal-tab").forEach(function (t) {
+      t.classList.toggle("active", t.dataset.tab === tab);
+    });
+    loginForm.classList.toggle("hidden", tab !== "login");
+    registerForm.classList.toggle("hidden", tab !== "register");
+    otpForm.classList.add("hidden");
+    modalTabs.classList.remove("hidden");
+  }
+
+  function showOtp(email) {
+    pendingEmail = email;
+    otpEmailSpan.textContent = email;
+    loginForm.classList.add("hidden");
+    registerForm.classList.add("hidden");
+    modalTabs.classList.add("hidden");
+    otpForm.classList.remove("hidden");
+    document.getElementById("otpCode").value = "";
+    clearErrors();
+  }
+
+  function clearErrors() {
+    ["loginError", "registerError", "otpError"].forEach(function (id) {
+      const el = document.getElementById(id);
+      el.textContent = "";
+      el.classList.add("hidden");
+    });
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+
+  // Modal tab switching
+  modalTabs.addEventListener("click", function (e) {
+    const tab = e.target.dataset.tab;
+    if (tab) showTab(tab);
+  });
+
+  loginBtn.addEventListener("click", function () { openModal("login"); });
+  logoutBtn.addEventListener("click", doLogout);
+  modalClose.addEventListener("click", closeModal);
+  authModal.addEventListener("click", function (e) {
+    if (e.target === authModal) closeModal();
+  });
+
+  // Login submit
+  loginForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    clearErrors();
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    try {
+      pendingAction = "login";
+      await apiCall("POST", "/api/auth/login", { email, password });
+      showOtp(email);
+    } catch (err) {
+      showError("loginError", err.message);
+    }
+  });
+
+  // Register submit
+  registerForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    clearErrors();
+    const email    = document.getElementById("registerEmail").value.trim();
+    const password = document.getElementById("registerPassword").value;
+    try {
+      pendingAction = "register";
+      await apiCall("POST", "/api/auth/register", { email, password });
+      showOtp(email);
+    } catch (err) {
+      showError("registerError", err.message);
+    }
+  });
+
+  // OTP submit
+  otpForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    clearErrors();
+    const code = document.getElementById("otpCode").value.trim();
+    try {
+      const data = await apiCall("POST", "/api/auth/verify", { email: pendingEmail, code });
+      saveAuth(data.token, data.email);
+      closeModal();
+    } catch (err) {
+      showError("otpError", err.message);
+    }
+  });
+
+  // OTP resend
+  otpResendBtn.addEventListener("click", async function () {
+    clearErrors();
+    try {
+      if (pendingAction === "login") {
+        const password = document.getElementById("loginPassword").value;
+        await apiCall("POST", "/api/auth/login", { email: pendingEmail, password });
+      } else {
+        const password = document.getElementById("registerPassword").value;
+        await apiCall("POST", "/api/auth/register", { email: pendingEmail, password });
+      }
+      document.getElementById("otpCode").value = "";
+    } catch (err) {
+      showError("otpError", err.message);
+    }
+  });
+
+  // ── Watched button ────────────────────────────────────────────────────────
+  function updateWatchedBtn() {
+    if (!authToken || !currentTitle) {
+      watchedBtn.classList.add("hidden");
+      return;
+    }
+    watchedBtn.classList.remove("hidden");
+    const isWatched = watchedSet.has(currentTitle);
+    watchedBtn.querySelector(".watched-btn-text").textContent =
+      isWatched ? "Watched" : "Mark as Watched";
+    watchedBtn.classList.toggle("watched-btn-active", isWatched);
+  }
+
+  watchedBtn.addEventListener("click", async function () {
+    if (!currentTitle) return;
+    try {
+      if (watchedSet.has(currentTitle)) {
+        await removeWatched(currentTitle);
+      } else {
+        await addWatched(currentTitle);
+      }
+      updateWatchedBtn();
+    } catch (e) {
+      // silent fail
+    }
+  });
+
+  // ── Movie picking ─────────────────────────────────────────────────────────
+  function getAvailableMovies() {
+    if (!authToken || !filterCheckbox.checked || watchedSet.size === 0) return MOVIES;
+    const available = MOVIES.filter(function (m) { return !watchedSet.has(m); });
+    return available.length > 0 ? available : MOVIES;
+  }
 
   function getRandomMovie() {
+    const pool = getAvailableMovies();
     let index;
-    // Avoid picking the same movie twice in a row
     do {
-      index = Math.floor(Math.random() * MOVIES.length);
-    } while (index === lastIndex && MOVIES.length > 1);
+      index = Math.floor(Math.random() * pool.length);
+    } while (index === lastIndex && pool.length > 1);
     lastIndex = index;
-    return { title: MOVIES[index], index: index + 1 };
+    const title = pool[index];
+    return { title: title, index: MOVIES.indexOf(title) + 1 };
   }
 
   function showMovie(movie) {
-    // Animate the card
+    currentTitle = movie.title;
+
     cardInner.classList.remove("shuffle");
-    // Force reflow to restart animation
     void cardInner.offsetWidth;
     cardInner.classList.add("shuffle");
     cardInner.classList.add("picked");
 
-    // Hide placeholder, show result
     placeholder.classList.add("hidden");
     result.classList.remove("hidden");
 
-    // Reset animations on result children by re-rendering
     result.innerHTML = result.innerHTML;
 
-    // Re-query after innerHTML reset
-    const title = document.getElementById("movieTitle");
-    const number = document.getElementById("movieNumber");
+    document.getElementById("movieTitle").textContent = movie.title;
+    document.getElementById("movieNumber").textContent = "#" + movie.index + " of " + MOVIES.length;
 
-    title.textContent = movie.title;
-    number.textContent = "#" + movie.index + " of " + MOVIES.length;
-
-    // Update button text after first pick
     btnText.textContent = "Pick Again";
 
-    // Add to history
+    updateWatchedBtn();
+
     history.unshift(movie);
     if (history.length > 1) {
       renderHistory();
@@ -57,8 +305,7 @@
   }
 
   function renderHistory() {
-    // Only show previous picks (skip current)
-    const previous = history.slice(1, 6); // Show last 5
+    const previous = history.slice(1, 6);
     if (previous.length === 0) return;
 
     historySection.classList.remove("hidden");
@@ -86,13 +333,18 @@
     showMovie(movie);
   });
 
-  // Keyboard shortcut: Space or Enter to pick
   document.addEventListener("keydown", function (e) {
-    if (e.code === "Space" || e.code === "Enter") {
-      if (e.target === document.body || e.target === pickBtn) {
-        e.preventDefault();
-        pickBtn.click();
+    if (authModal.classList.contains("hidden")) {
+      if (e.code === "Space" || e.code === "Enter") {
+        if (e.target === document.body || e.target === pickBtn) {
+          e.preventDefault();
+          pickBtn.click();
+        }
       }
     }
   });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  updateAuthUI();
+  if (authToken) fetchWatched();
 })();

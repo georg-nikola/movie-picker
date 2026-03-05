@@ -1,0 +1,19 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "movie-picker-api.fullname" . }}
+  labels:
+    {{- include "movie-picker-api.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: {{ include "movie-picker-api.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}
