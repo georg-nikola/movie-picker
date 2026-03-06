@@ -1,17 +1,13 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
-import uuid
 
-from config import settings
 from database import get_db, init_db
-from models import User, OtpToken, WatchedMovie
-from auth import hash_password, verify_password, generate_otp, create_jwt, get_current_user
-from email_service import send_otp_email
+from models import User, WatchedMovie
+from auth import hash_password, verify_password, create_jwt, get_current_user
 
 
 @asynccontextmanager
@@ -43,31 +39,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class VerifyRequest(BaseModel):
-    email: EmailStr
-    code: str
-
-
 class WatchedMovieRequest(BaseModel):
     movie_title: str
 
 
 # ── Auth endpoints ────────────────────────────────────────────────────────────
-
-async def _create_and_send_otp(user: User, db: AsyncSession) -> None:
-    # Invalidate old tokens
-    await db.execute(delete(OtpToken).where(OtpToken.user_id == user.id))
-
-    code = settings.test_otp_code if settings.test_otp_code else generate_otp()
-    token = OtpToken(
-        user_id=user.id,
-        code=code,
-        expires_at=datetime.utcnow() + timedelta(minutes=10),
-    )
-    db.add(token)
-    await db.commit()
-    await send_otp_email(user.email, code)
-
 
 @app.post("/api/auth/register", status_code=201)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -78,11 +54,13 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if len(req.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
-    user = User(email=req.email, password=hash_password(req.password))
+    user = User(email=req.email, password=hash_password(req.password), verified=True)
     db.add(user)
-    await db.flush()
-    await _create_and_send_otp(user, db)
-    return {"message": "Verification code sent to your email"}
+    await db.commit()
+    await db.refresh(user)
+
+    jwt_token = create_jwt(str(user.id))
+    return {"token": jwt_token, "email": user.email}
 
 
 @app.post("/api/auth/login")
@@ -91,34 +69,6 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user or not verify_password(req.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    await _create_and_send_otp(user, db)
-    return {"message": "Verification code sent to your email"}
-
-
-@app.post("/api/auth/verify")
-async def verify(req: VerifyRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == req.email))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    now = datetime.utcnow()
-    token_result = await db.execute(
-        select(OtpToken).where(
-            OtpToken.user_id == user.id,
-            OtpToken.code == req.code,
-            OtpToken.used == False,
-            OtpToken.expires_at > now,
-        )
-    )
-    token = token_result.scalar_one_or_none()
-    if not token:
-        raise HTTPException(status_code=401, detail="Invalid or expired code")
-
-    token.used = True
-    user.verified = True
-    await db.commit()
 
     jwt_token = create_jwt(str(user.id))
     return {"token": jwt_token, "email": user.email}

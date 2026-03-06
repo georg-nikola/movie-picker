@@ -26,9 +26,6 @@
   const modalTabs     = document.getElementById("modalTabs");
   const loginForm     = document.getElementById("loginForm");
   const registerForm  = document.getElementById("registerForm");
-  const otpForm       = document.getElementById("otpForm");
-  const otpEmailSpan  = document.getElementById("otpEmail");
-  const otpResendBtn  = document.getElementById("otpResend");
 
   // ── State ─────────────────────────────────────────────────────────────────
   let history     = [];
@@ -38,9 +35,6 @@
   let authToken   = localStorage.getItem("mp_token") || "";
   let authEmail   = localStorage.getItem("mp_email") || "";
   let watchedSet  = new Set();
-  let pendingEmail = "";
-  let pendingAction = ""; // "login" | "register"
-
   // ── API ───────────────────────────────────────────────────────────────────
   async function apiCall(method, path, body) {
     const opts = {
@@ -130,23 +124,10 @@
     });
     loginForm.classList.toggle("hidden", tab !== "login");
     registerForm.classList.toggle("hidden", tab !== "register");
-    otpForm.classList.add("hidden");
-    modalTabs.classList.remove("hidden");
-  }
-
-  function showOtp(email) {
-    pendingEmail = email;
-    otpEmailSpan.textContent = email;
-    loginForm.classList.add("hidden");
-    registerForm.classList.add("hidden");
-    modalTabs.classList.add("hidden");
-    otpForm.classList.remove("hidden");
-    document.getElementById("otpCode").value = "";
-    clearErrors();
   }
 
   function clearErrors() {
-    ["loginError", "registerError", "otpError"].forEach(function (id) {
+    ["loginError", "registerError"].forEach(function (id) {
       const el = document.getElementById(id);
       el.textContent = "";
       el.classList.add("hidden");
@@ -179,9 +160,9 @@
     const email    = document.getElementById("loginEmail").value.trim();
     const password = document.getElementById("loginPassword").value;
     try {
-      pendingAction = "login";
-      await apiCall("POST", "/api/auth/login", { email, password });
-      showOtp(email);
+      const data = await apiCall("POST", "/api/auth/login", { email, password });
+      saveAuth(data.token, data.email);
+      closeModal();
     } catch (err) {
       showError("loginError", err.message);
     }
@@ -194,42 +175,11 @@
     const email    = document.getElementById("registerEmail").value.trim();
     const password = document.getElementById("registerPassword").value;
     try {
-      pendingAction = "register";
-      await apiCall("POST", "/api/auth/register", { email, password });
-      showOtp(email);
-    } catch (err) {
-      showError("registerError", err.message);
-    }
-  });
-
-  // OTP submit
-  otpForm.addEventListener("submit", async function (e) {
-    e.preventDefault();
-    clearErrors();
-    const code = document.getElementById("otpCode").value.trim();
-    try {
-      const data = await apiCall("POST", "/api/auth/verify", { email: pendingEmail, code });
+      const data = await apiCall("POST", "/api/auth/register", { email, password });
       saveAuth(data.token, data.email);
       closeModal();
     } catch (err) {
-      showError("otpError", err.message);
-    }
-  });
-
-  // OTP resend
-  otpResendBtn.addEventListener("click", async function () {
-    clearErrors();
-    try {
-      if (pendingAction === "login") {
-        const password = document.getElementById("loginPassword").value;
-        await apiCall("POST", "/api/auth/login", { email: pendingEmail, password });
-      } else {
-        const password = document.getElementById("registerPassword").value;
-        await apiCall("POST", "/api/auth/register", { email: pendingEmail, password });
-      }
-      document.getElementById("otpCode").value = "";
-    } catch (err) {
-      showError("otpError", err.message);
+      showError("registerError", err.message);
     }
   });
 

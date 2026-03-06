@@ -203,7 +203,7 @@ def run_tests(base_url: str, dns_override: bool = False):
             try:
                 test_email = f"smoke-{int(time.time())}@example.com"
 
-                # Open modal and switch to register tab via JS to avoid overlay issues
+                # Register → should immediately log in (no OTP)
                 page.evaluate("document.getElementById('loginBtn').click()")
                 page.wait_for_timeout(300)
                 page.evaluate("document.querySelector('[data-tab=\"register\"]').click()")
@@ -211,45 +211,49 @@ def run_tests(base_url: str, dns_override: bool = False):
                 page.locator("#registerEmail").fill(test_email)
                 page.locator("#registerPassword").fill("SmokeTest1234")
                 page.evaluate("document.querySelector('#registerForm button[type=\"submit\"]').click()")
+                page.wait_for_timeout(1500)
 
-                try:
-                    page.wait_for_selector("#otpForm:visible", timeout=6000)
-                    otp_shown = True
-                except Exception:
-                    otp_shown = False
-                record("Register → OTP form appears", otp_shown)
+                logged_in = page.evaluate("!!localStorage.getItem('mp_token')")
+                record("Register → JWT in localStorage (no OTP)", logged_in)
+                record("Auth user email shown in header",  page.locator("#authUser").is_visible())
+                record("Sign Out button visible",           page.locator("#logoutBtn").is_visible())
+                record("Sign In button hidden",             not page.locator("#loginBtn").is_visible())
+                record("Modal closed after register",       not page.locator("#authModal").is_visible())
 
-                if otp_shown:
-                    page.locator("#otpCode").fill("123456")
-                    page.evaluate("document.querySelector('#otpForm button[type=\"submit\"]').click()")
-                    page.wait_for_timeout(1500)
+                # Logout, then test login flow
+                page.evaluate("document.getElementById('logoutBtn').click()")
+                page.wait_for_timeout(400)
 
-                    logged_in = page.evaluate("!!localStorage.getItem('mp_token')")
-                    record("JWT stored in localStorage after verify", logged_in)
-                    record("Auth user email shown in header",  page.locator("#authUser").is_visible())
-                    record("Sign Out button visible",           page.locator("#logoutBtn").is_visible())
-                    record("Sign In button hidden",             not page.locator("#loginBtn").is_visible())
+                page.evaluate("document.getElementById('loginBtn').click()")
+                page.wait_for_timeout(300)
+                page.locator("#loginEmail").fill(test_email)
+                page.locator("#loginPassword").fill("SmokeTest1234")
+                page.evaluate("document.querySelector('#loginForm button[type=\"submit\"]').click()")
+                page.wait_for_timeout(1500)
 
-                    # Wait for fetchWatched() to complete after login, then pick
-                    page.wait_for_timeout(1000)
-                    page.locator("#pickBtn").click()
-                    page.wait_for_timeout(1000)
-                    record("Skip-watched filter visible when logged in",  page.locator("#watchedFilter").is_visible())
-                    record("Watched button visible when logged in",       page.locator("#watchedBtn").is_visible())
+                record("Login → JWT in localStorage (no OTP)",    page.evaluate("!!localStorage.getItem('mp_token')"))
+                record("Modal closed after login",                 not page.locator("#authModal").is_visible())
 
-                    # Mark as watched
-                    page.locator("#watchedBtn").click()
-                    page.wait_for_timeout(1500)
-                    btn_text = page.locator("#watchedBtn .watched-btn-text").inner_text()
-                    record("Watched button text changes after marking", "Watched" in btn_text, f"got: {btn_text!r}")
+                # Pick a movie and check watched controls
+                page.wait_for_timeout(500)
+                page.locator("#pickBtn").click()
+                page.wait_for_timeout(1000)
+                record("Skip-watched filter visible when logged in",  page.locator("#watchedFilter").is_visible())
+                record("Watched button visible when logged in",       page.locator("#watchedBtn").is_visible())
 
-                    # Logout
-                    page.evaluate("document.getElementById('logoutBtn').click()")
-                    page.wait_for_timeout(400)
-                    record("Logout clears JWT from localStorage",   page.evaluate("!localStorage.getItem('mp_token')"))
-                    record("Sign In button restored after logout",  page.locator("#loginBtn").is_visible())
-                    record("Sign Out button hidden after logout",   not page.locator("#logoutBtn").is_visible())
-                    record("Watched filter hidden after logout",    not page.locator("#watchedFilter").is_visible())
+                # Mark as watched
+                page.locator("#watchedBtn").click()
+                page.wait_for_timeout(1500)
+                btn_text = page.locator("#watchedBtn .watched-btn-text").inner_text()
+                record("Watched button shows 'Watched' after marking", btn_text == "Watched", f"got: {btn_text!r}")
+
+                # Logout
+                page.evaluate("document.getElementById('logoutBtn').click()")
+                page.wait_for_timeout(400)
+                record("Logout clears JWT from localStorage",   page.evaluate("!localStorage.getItem('mp_token')"))
+                record("Sign In button restored after logout",  page.locator("#loginBtn").is_visible())
+                record("Sign Out button hidden after logout",   not page.locator("#logoutBtn").is_visible())
+                record("Watched filter hidden after logout",    not page.locator("#watchedFilter").is_visible())
             except Exception as e:
                 record("Auth flow", False, str(e)[:80])
 
