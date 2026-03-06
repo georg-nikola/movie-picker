@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from database import get_db, init_db
 from models import User, WatchedMovie
@@ -30,12 +30,12 @@ app.add_middleware(
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    username: str
     password: str
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    username: str
     password: str
 
 
@@ -47,31 +47,34 @@ class WatchedMovieRequest(BaseModel):
 
 @app.post("/api/auth/register", status_code=201)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == req.email))
+    if len(req.username) < 3:
+        raise HTTPException(status_code=422, detail="Username must be at least 3 characters")
+
+    result = await db.execute(select(User).where(User.username == req.username))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="Username already taken")
 
     if len(req.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
-    user = User(email=req.email, password=hash_password(req.password), verified=True)
+    user = User(username=req.username, password=hash_password(req.password))
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
     jwt_token = create_jwt(str(user.id))
-    return {"token": jwt_token, "email": user.email}
+    return {"token": jwt_token, "username": user.username}
 
 
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == req.email))
+    result = await db.execute(select(User).where(User.username == req.username))
     user = result.scalar_one_or_none()
     if not user or not verify_password(req.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     jwt_token = create_jwt(str(user.id))
-    return {"token": jwt_token, "email": user.email}
+    return {"token": jwt_token, "username": user.username}
 
 
 # ── Watched movies endpoints ──────────────────────────────────────────────────

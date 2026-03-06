@@ -33,7 +33,7 @@
   let currentTitle = "";
 
   let authToken   = localStorage.getItem("mp_token") || "";
-  let authEmail   = localStorage.getItem("mp_email") || "";
+  let authUsername   = localStorage.getItem("mp_username") || "";
   let watchedSet  = new Set();
   // ── API ───────────────────────────────────────────────────────────────────
   async function apiCall(method, path, body) {
@@ -76,7 +76,7 @@
   function updateAuthUI() {
     if (authToken) {
       loginBtn.classList.add("hidden");
-      authUser.textContent = authEmail;
+      authUser.textContent = authUsername;
       authUser.classList.remove("hidden");
       logoutBtn.classList.remove("hidden");
     } else {
@@ -90,19 +90,19 @@
 
   function doLogout() {
     authToken = "";
-    authEmail = "";
+    authUsername = "";
     watchedSet = new Set();
     localStorage.removeItem("mp_token");
-    localStorage.removeItem("mp_email");
+    localStorage.removeItem("mp_username");
     updateAuthUI();
     updateWatchedBtn();
   }
 
-  function saveAuth(token, email) {
+  function saveAuth(token, username) {
     authToken = token;
-    authEmail = email;
+    authUsername = username;
     localStorage.setItem("mp_token", token);
-    localStorage.setItem("mp_email", email);
+    localStorage.setItem("mp_username", username);
     updateAuthUI();
     fetchWatched();
   }
@@ -157,11 +157,11 @@
   loginForm.addEventListener("submit", async function (e) {
     e.preventDefault();
     clearErrors();
-    const email    = document.getElementById("loginEmail").value.trim();
+    const username = document.getElementById("loginUsername").value.trim();
     const password = document.getElementById("loginPassword").value;
     try {
-      const data = await apiCall("POST", "/api/auth/login", { email, password });
-      saveAuth(data.token, data.email);
+      const data = await apiCall("POST", "/api/auth/login", { username, password });
+      saveAuth(data.token, data.username);
       closeModal();
     } catch (err) {
       showError("loginError", err.message);
@@ -172,11 +172,11 @@
   registerForm.addEventListener("submit", async function (e) {
     e.preventDefault();
     clearErrors();
-    const email    = document.getElementById("registerEmail").value.trim();
+    const username = document.getElementById("registerUsername").value.trim();
     const password = document.getElementById("registerPassword").value;
     try {
-      const data = await apiCall("POST", "/api/auth/register", { email, password });
-      saveAuth(data.token, data.email);
+      const data = await apiCall("POST", "/api/auth/register", { username, password });
+      saveAuth(data.token, data.username);
       closeModal();
     } catch (err) {
       showError("registerError", err.message);

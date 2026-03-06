@@ -203,22 +203,24 @@ def run_tests(base_url: str, dns_override: bool = False):
             try:
                 test_email = f"smoke-{int(time.time())}@example.com"
 
-                # Register → should immediately log in (no OTP)
+                test_username = f"smoketest{int(time.time()) % 100000}"
+
+                # Register → should immediately log in (username + password, no OTP)
                 page.evaluate("document.getElementById('loginBtn').click()")
                 page.wait_for_timeout(300)
                 page.evaluate("document.querySelector('[data-tab=\"register\"]').click()")
                 page.wait_for_timeout(200)
-                page.locator("#registerEmail").fill(test_email)
+                page.locator("#registerUsername").fill(test_username)
                 page.locator("#registerPassword").fill("SmokeTest1234")
                 page.evaluate("document.querySelector('#registerForm button[type=\"submit\"]').click()")
                 page.wait_for_timeout(1500)
 
                 logged_in = page.evaluate("!!localStorage.getItem('mp_token')")
-                record("Register → JWT in localStorage (no OTP)", logged_in)
-                record("Auth user email shown in header",  page.locator("#authUser").is_visible())
-                record("Sign Out button visible",           page.locator("#logoutBtn").is_visible())
-                record("Sign In button hidden",             not page.locator("#loginBtn").is_visible())
-                record("Modal closed after register",       not page.locator("#authModal").is_visible())
+                record("Register → JWT in localStorage", logged_in)
+                record("Auth username shown in header",  page.locator("#authUser").is_visible())
+                record("Sign Out button visible",         page.locator("#logoutBtn").is_visible())
+                record("Sign In button hidden",           not page.locator("#loginBtn").is_visible())
+                record("Modal closed after register",     not page.locator("#authModal").is_visible())
 
                 # Logout, then test login flow
                 page.evaluate("document.getElementById('logoutBtn').click()")
@@ -226,13 +228,13 @@ def run_tests(base_url: str, dns_override: bool = False):
 
                 page.evaluate("document.getElementById('loginBtn').click()")
                 page.wait_for_timeout(300)
-                page.locator("#loginEmail").fill(test_email)
+                page.locator("#loginUsername").fill(test_username)
                 page.locator("#loginPassword").fill("SmokeTest1234")
                 page.evaluate("document.querySelector('#loginForm button[type=\"submit\"]').click()")
                 page.wait_for_timeout(1500)
 
-                record("Login → JWT in localStorage (no OTP)",    page.evaluate("!!localStorage.getItem('mp_token')"))
-                record("Modal closed after login",                 not page.locator("#authModal").is_visible())
+                record("Login → JWT in localStorage",   page.evaluate("!!localStorage.getItem('mp_token')"))
+                record("Modal closed after login",       not page.locator("#authModal").is_visible())
 
                 # Pick a movie and check watched controls
                 page.wait_for_timeout(500)
