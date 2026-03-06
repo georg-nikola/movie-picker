@@ -146,7 +146,114 @@ def run_tests(base_url: str, dns_override: bool = False):
         post_kbd_title = page.locator("#movieTitle").inner_text()
         record("Space key triggers a pick", len(post_kbd_title.strip()) > 0)
 
-        # ── Test 11: No new console errors after all interactions ─────────────
+        # ── Test 11: Auth DOM elements ────────────────────────────────────────
+        print("\n[Auth Elements]")
+        record("Sign In button exists",          page.locator("#loginBtn").count() == 1)
+        record("Auth user span exists",           page.locator("#authUser").count() == 1)
+        record("Sign Out button exists",          page.locator("#logoutBtn").count() == 1)
+        record("Auth modal exists",               page.locator("#authModal").count() == 1)
+        record("Sign In button visible initially", page.locator("#loginBtn").is_visible())
+        record("Auth user hidden initially",       not page.locator("#authUser").is_visible())
+        record("Sign Out hidden initially",        not page.locator("#logoutBtn").is_visible())
+
+        # ── Test 12: Modal open / close / tab switching ───────────────────────
+        print("\n[Auth Modal UI]")
+        modal_ui_ok = True
+        try:
+            # Use JS click to bypass any Cloudflare overlay that may intercept events
+            page.evaluate("document.getElementById('loginBtn').click()")
+            page.wait_for_timeout(400)
+            modal_visible = page.locator("#authModal").is_visible()
+            record("Modal opens on Sign In click",       modal_visible)
+            record("Login form shown by default",         page.locator("#loginForm").is_visible())
+            record("Register form hidden by default",     not page.locator("#registerForm").is_visible())
+
+            page.evaluate("document.querySelector('[data-tab=\"register\"]').click()")
+            page.wait_for_timeout(200)
+            record("Register form shows on Register tab", page.locator("#registerForm").is_visible())
+            record("Login form hidden on Register tab",   not page.locator("#loginForm").is_visible())
+
+            page.evaluate("document.querySelector('[data-tab=\"login\"]').click()")
+            page.wait_for_timeout(200)
+            record("Login form restored on Sign In tab",  page.locator("#loginForm").is_visible())
+
+            page.evaluate("document.getElementById('modalClose').click()")
+            page.wait_for_timeout(300)
+            record("Modal closes on × button",            not page.locator("#authModal").is_visible())
+        except Exception as e:
+            record("Auth modal UI interactions", False, str(e)[:80])
+            modal_ui_ok = False
+
+        # ── Test 13: Full auth flow (requires live API via Traefik) ─────────────
+        api_reachable = False
+        if not base_url.startswith("file://"):
+            try:
+                api_reachable = page.evaluate("""async () => {
+                    try {
+                        const r = await fetch('/api/health');
+                        const j = await r.json();
+                        return j.status === 'ok';
+                    } catch { return false; }
+                }""")
+            except Exception:
+                pass
+
+        if api_reachable:
+            print("\n[Auth Flow]")
+            try:
+                test_email = f"smoke-{int(time.time())}@example.com"
+
+                # Open modal and switch to register tab via JS to avoid overlay issues
+                page.evaluate("document.getElementById('loginBtn').click()")
+                page.wait_for_timeout(300)
+                page.evaluate("document.querySelector('[data-tab=\"register\"]').click()")
+                page.wait_for_timeout(200)
+                page.locator("#registerEmail").fill(test_email)
+                page.locator("#registerPassword").fill("SmokeTest1234")
+                page.evaluate("document.querySelector('#registerForm button[type=\"submit\"]').click()")
+
+                try:
+                    page.wait_for_selector("#otpForm:visible", timeout=6000)
+                    otp_shown = True
+                except Exception:
+                    otp_shown = False
+                record("Register → OTP form appears", otp_shown)
+
+                if otp_shown:
+                    page.locator("#otpCode").fill("123456")
+                    page.evaluate("document.querySelector('#otpForm button[type=\"submit\"]').click()")
+                    page.wait_for_timeout(1500)
+
+                    logged_in = page.evaluate("!!localStorage.getItem('mp_token')")
+                    record("JWT stored in localStorage after verify", logged_in)
+                    record("Auth user email shown in header",  page.locator("#authUser").is_visible())
+                    record("Sign Out button visible",           page.locator("#logoutBtn").is_visible())
+                    record("Sign In button hidden",             not page.locator("#loginBtn").is_visible())
+
+                    # Wait for fetchWatched() to complete after login, then pick
+                    page.wait_for_timeout(1000)
+                    page.locator("#pickBtn").click()
+                    page.wait_for_timeout(1000)
+                    record("Skip-watched filter visible when logged in",  page.locator("#watchedFilter").is_visible())
+                    record("Watched button visible when logged in",       page.locator("#watchedBtn").is_visible())
+
+                    # Mark as watched
+                    page.locator("#watchedBtn").click()
+                    page.wait_for_timeout(1500)
+                    btn_text = page.locator("#watchedBtn .watched-btn-text").inner_text()
+                    record("Watched button text changes after marking", "Watched" in btn_text, f"got: {btn_text!r}")
+
+                    # Logout
+                    page.evaluate("document.getElementById('logoutBtn').click()")
+                    page.wait_for_timeout(400)
+                    record("Logout clears JWT from localStorage",   page.evaluate("!localStorage.getItem('mp_token')"))
+                    record("Sign In button restored after logout",  page.locator("#loginBtn").is_visible())
+                    record("Sign Out button hidden after logout",   not page.locator("#logoutBtn").is_visible())
+                    record("Watched filter hidden after logout",    not page.locator("#watchedFilter").is_visible())
+            except Exception as e:
+                record("Auth flow", False, str(e)[:80])
+
+        # ── Final: No JS errors throughout ────────────────────────────────────
         print("\n[Final Check]")
         record("No JS errors during any interaction", len(console_errors) == 0,
                console_errors[0] if console_errors else "")

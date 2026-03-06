@@ -289,7 +289,7 @@
     placeholder.classList.add("hidden");
     result.classList.remove("hidden");
 
-    result.innerHTML = result.innerHTML;
+    void result.offsetWidth;
 
     document.getElementById("movieTitle").textContent = movie.title;
     document.getElementById("movieNumber").textContent = "#" + movie.index + " of " + MOVIES.length;
