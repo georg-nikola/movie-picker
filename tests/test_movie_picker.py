@@ -188,11 +188,15 @@ def run_tests(base_url: str, dns_override: bool = False):
         api_reachable = False
         if not base_url.startswith("file://"):
             try:
+                # Probe with a POST to confirm the API accepts writes (WAF may block POST even if GET works)
                 api_reachable = page.evaluate("""async () => {
                     try {
-                        const r = await fetch('/api/health');
-                        const j = await r.json();
-                        return j.status === 'ok';
+                        const r = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({username: '__probe__', password: '__probe__'})
+                        });
+                        return r.status === 401 || r.status === 422;
                     } catch { return false; }
                 }""")
             except Exception:
@@ -200,9 +204,8 @@ def run_tests(base_url: str, dns_override: bool = False):
 
         if api_reachable:
             print("\n[Auth Flow]")
+            console_errors.clear()  # reset; probe 401 is expected noise
             try:
-                test_email = f"smoke-{int(time.time())}@example.com"
-
                 test_username = f"smoketest{int(time.time()) % 100000}"
 
                 # Register → should immediately log in (username + password, no OTP)
@@ -213,7 +216,10 @@ def run_tests(base_url: str, dns_override: bool = False):
                 page.locator("#registerUsername").fill(test_username)
                 page.locator("#registerPassword").fill("SmokeTest1234")
                 page.evaluate("document.querySelector('#registerForm button[type=\"submit\"]').click()")
-                page.wait_for_timeout(1500)
+                try:
+                    page.wait_for_function("!!localStorage.getItem('mp_token')", timeout=6000)
+                except Exception:
+                    pass
 
                 logged_in = page.evaluate("!!localStorage.getItem('mp_token')")
                 record("Register → JWT in localStorage", logged_in)
@@ -231,7 +237,10 @@ def run_tests(base_url: str, dns_override: bool = False):
                 page.locator("#loginUsername").fill(test_username)
                 page.locator("#loginPassword").fill("SmokeTest1234")
                 page.evaluate("document.querySelector('#loginForm button[type=\"submit\"]').click()")
-                page.wait_for_timeout(1500)
+                try:
+                    page.wait_for_function("!!localStorage.getItem('mp_token')", timeout=6000)
+                except Exception:
+                    pass
 
                 record("Login → JWT in localStorage",   page.evaluate("!!localStorage.getItem('mp_token')"))
                 record("Modal closed after login",       not page.locator("#authModal").is_visible())
