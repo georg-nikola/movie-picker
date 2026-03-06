@@ -16,17 +16,14 @@ spec:
         app: postgresql
     spec:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        fsGroup: 999
+        # NOTE: The official postgres image starts as root and uses gosu to drop
+        # to the postgres user (uid 999) internally. runAsNonRoot cannot be set here.
+        # For full non-root enforcement, switch to bitnami/postgresql (uid 1001).
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: postgresql
           securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: [ALL]
             seccompProfile:
               type: RuntimeDefault
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
