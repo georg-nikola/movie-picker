@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "movie-picker-api.fullname" . }}-auth-ratelimit
+  labels:
+    {{- include "movie-picker-api.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    # 10 requests per minute per source IP on auth endpoints
+    average: 10
+    burst: 5
+    period: 1m
+    sourceCriterion:
+      ipStrategy:
+        depth: 1

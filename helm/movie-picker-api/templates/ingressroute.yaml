@@ -10,6 +10,16 @@ spec:
     - web
     - websecure
   routes:
+    # Auth endpoints: rate-limited to 10 req/min per IP
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/auth`)
+      kind: Rule
+      priority: 110
+      middlewares:
+        - name: {{ include "movie-picker-api.fullname" . }}-auth-ratelimit
+      services:
+        - name: {{ include "movie-picker-api.fullname" . }}
+          port: {{ .Values.service.port }}
+    # All other API routes: no rate limit
     - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api`)
       kind: Rule
       priority: 100

@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "postgresql.fullname" . }}
+  labels:
+    app: postgresql
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only the movie-picker-api pods may connect on 5432
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: movie-picker-api
+      ports:
+        - protocol: TCP
+          port: 5432

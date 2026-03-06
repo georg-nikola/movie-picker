@@ -69,6 +69,14 @@ jobs:
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
           push-to-registry: true
 
+      - name: Trivy — scan pushed image for CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
   build-and-push-api:
     runs-on: ubuntu-latest
     permissions:
@@ -121,6 +129,14 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
           subject-digest: ${{ steps.build-and-push-api.outputs.digest }}
           push-to-registry: true
+
+      - name: Trivy — scan pushed API image for CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ steps.meta-api.outputs.version }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0"
 
   smoke-test:
     name: Smoke test production
