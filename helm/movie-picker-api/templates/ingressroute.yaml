@@ -12,7 +12,7 @@ spec:
   routes:
     - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api`)
       kind: Rule
-      priority: 10
+      priority: 100
       services:
         - name: {{ include "movie-picker-api.fullname" . }}
           port: {{ .Values.service.port }}

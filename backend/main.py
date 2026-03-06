@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +62,7 @@ async def _create_and_send_otp(user: User, db: AsyncSession) -> None:
     token = OtpToken(
         user_id=user.id,
         code=code,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        expires_at=datetime.utcnow() + timedelta(minutes=10),
     )
     db.add(token)
     await db.commit()
@@ -103,7 +103,7 @@ async def verify(req: VerifyRequest, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     token_result = await db.execute(
         select(OtpToken).where(
             OtpToken.user_id == user.id,
