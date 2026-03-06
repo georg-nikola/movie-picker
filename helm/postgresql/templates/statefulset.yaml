@@ -15,17 +15,12 @@ spec:
       labels:
         app: postgresql
     spec:
-      securityContext:
-        # NOTE: The official postgres image starts as root and uses gosu to drop
-        # to the postgres user (uid 999) internally. runAsNonRoot cannot be set here.
-        # For full non-root enforcement, switch to bitnami/postgresql (uid 1001).
-        seccompProfile:
-          type: RuntimeDefault
+      # NOTE: The official postgres image starts as root and uses gosu/su-exec to
+      # drop to the postgres user internally. Full non-root enforcement requires
+      # switching to bitnami/postgresql. No securityContext is set here to avoid
+      # interfering with the image's internal privilege-drop mechanism.
       containers:
         - name: postgresql
-          securityContext:
-            seccompProfile:
-              type: RuntimeDefault
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
