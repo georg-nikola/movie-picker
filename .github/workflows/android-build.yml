@@ -1,0 +1,76 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-build.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Signed Release AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+        continue-on-error: true  # gradlew may not exist yet if wrapper jar not committed
+
+      - name: Decode release keystore
+        if: ${{ secrets.RELEASE_KEYSTORE_B64 != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > android/app/release.keystore
+
+      - name: Build Release AAB
+        working-directory: android
+        env:
+          KEYSTORE_PATH: app/release.keystore
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        run: gradle bundleRelease
+
+      - name: Build Debug APK (for testing without keystore)
+        if: ${{ secrets.RELEASE_KEYSTORE_B64 == '' }}
+        working-directory: android
+        run: gradle assembleDebug
+
+      - name: Upload Release AAB
+        if: ${{ secrets.RELEASE_KEYSTORE_B64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: movie-picker-release-${{ github.sha }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 60
+
+      - name: Upload Debug APK (fallback)
+        if: ${{ secrets.RELEASE_KEYSTORE_B64 == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: movie-picker-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f android/app/release.keystore

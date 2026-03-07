@@ -1,0 +1,12 @@
+# Copy this file to local.properties (which is gitignored) and fill in your values.
+# Generate a keystore with:
+#   keytool -genkey -v -keystore release.keystore -alias moviepicker \
+#           -keyalg RSA -keysize 2048 -validity 10000
+#   Then move release.keystore into android/app/ (also gitignored)
+
+sdk.dir=/path/to/your/Android/sdk
+
+keystore.path=app/release.keystore
+keystore.storePassword=your_store_password
+keystore.keyAlias=moviepicker
+keystore.keyPassword=your_key_password
