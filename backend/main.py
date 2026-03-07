@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -125,6 +125,19 @@ async def remove_watched(
         raise HTTPException(status_code=404, detail="Not found in watched list")
     await db.delete(watched)
     await db.commit()
+
+
+# ── Account management ────────────────────────────────────────────────────────
+
+@app.delete("/api/users/me", status_code=204)
+async def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete the authenticated user's account and all their data."""
+    await db.delete(current_user)
+    await db.commit()
+    return Response(status_code=204)
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
