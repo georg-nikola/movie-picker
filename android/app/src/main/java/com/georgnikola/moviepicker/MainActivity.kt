@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.georgnikola.moviepicker.ui.browser.MovieBrowserScreen
 import com.georgnikola.moviepicker.ui.home.HomeScreen
 import com.georgnikola.moviepicker.ui.theme.MoviePickerTheme
 import com.georgnikola.moviepicker.ui.watched.WatchedScreen
@@ -32,7 +33,13 @@ fun MoviePickerApp() {
             HomeScreen(onNavigateToWatched = { navController.navigate("watched") })
         }
         composable("watched") {
-            WatchedScreen(onBack = { navController.popBackStack() })
+            WatchedScreen(
+                onBack = { navController.popBackStack() },
+                onBrowseAll = { navController.navigate("browser") }
+            )
+        }
+        composable("browser") {
+            MovieBrowserScreen(onBack = { navController.popBackStack() })
         }
     }
 }

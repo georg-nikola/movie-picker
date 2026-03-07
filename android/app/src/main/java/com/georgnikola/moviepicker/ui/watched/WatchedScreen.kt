@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +39,7 @@ import com.georgnikola.moviepicker.MoviePickerApplication
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WatchedScreen(onBack: () -> Unit) {
+fun WatchedScreen(onBack: () -> Unit, onBrowseAll: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as MoviePickerApplication
     val viewModel: WatchedViewModel = viewModel(factory = WatchedViewModelFactory(app.repository))
@@ -62,10 +64,22 @@ fun WatchedScreen(onBack: () -> Unit) {
                 )
             )
         },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onBrowseAll,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Browse all films") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (state.watchedMovies.isEmpty()) {
-            EmptyWatchedState(modifier = Modifier.padding(paddingValues))
+            EmptyWatchedState(
+                onBrowseAll = onBrowseAll,
+                modifier = Modifier.padding(paddingValues)
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -87,7 +101,7 @@ fun WatchedScreen(onBack: () -> Unit) {
                         )
                     }
                 }
-                item { Spacer(Modifier.height(24.dp)) }
+                item { Spacer(Modifier.height(88.dp)) } // space for FAB
             }
         }
     }
@@ -129,7 +143,7 @@ private fun WatchedMovieItem(
 }
 
 @Composable
-private fun EmptyWatchedState(modifier: Modifier = Modifier) {
+private fun EmptyWatchedState(onBrowseAll: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,7 +163,7 @@ private fun EmptyWatchedState(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Mark movies as watched from the home screen",
+            "Pick from the home screen or browse all films below",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
