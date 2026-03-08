@@ -19,6 +19,7 @@
           <span class="logo-text">MOVIE PICKER</span>
         </div>
         <div class="auth-bar">
+          <button class="auth-btn auth-btn-ghost" id="browseBtn">Browse Films</button>
           <span class="auth-user hidden" id="authUser"></span>
           <button class="auth-btn" id="loginBtn">Sign In</button>
           <button class="auth-btn auth-btn-ghost hidden" id="logoutBtn">Sign Out</button>
@@ -116,6 +117,32 @@
         </button>
       </form>
 
+    </div>
+  </div>
+
+  <!-- Browser Overlay -->
+  <div class="browser-overlay hidden" id="browserOverlay">
+    <div class="browser-panel">
+      <div class="browser-header">
+        <div class="browser-header-info">
+          <h2 class="browser-title">All Films</h2>
+          <span class="browser-watched-count" id="browserWatchedCount"></span>
+        </div>
+        <div class="browser-header-actions">
+          <div class="browser-sort-group" id="browserSortGroup">
+            <button class="browser-sort-btn active" data-sort="index">Curated</button>
+            <button class="browser-sort-btn" data-sort="alpha">A–Z</button>
+          </div>
+          <button class="browser-close" id="browserClose">&#10005;</button>
+        </div>
+      </div>
+      <div class="browser-search-wrap">
+        <span class="browser-search-icon">&#128269;</span>
+        <input type="search" class="browser-search" id="browserSearch" placeholder="Search 500 films…" autocomplete="off">
+        <button class="browser-search-clear hidden" id="browserSearchClear">&#10005;</button>
+      </div>
+      <p class="browser-results-count hidden" id="browserResultsCount"></p>
+      <div class="browser-list" id="browserList"></div>
     </div>
   </div>
 

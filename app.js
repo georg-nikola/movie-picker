@@ -14,6 +14,7 @@
   const loginBtn      = document.getElementById("loginBtn");
   const logoutBtn     = document.getElementById("logoutBtn");
   const authUser      = document.getElementById("authUser");
+  const browseBtn     = document.getElementById("browseBtn");
 
   // Watched
   const watchedBtn    = document.getElementById("watchedBtn");
@@ -293,6 +294,147 @@
       }
     }
   });
+
+  // ── Browser ───────────────────────────────────────────────────────────────
+  const browserOverlay     = document.getElementById("browserOverlay");
+  const browserClose       = document.getElementById("browserClose");
+  const browserSearch      = document.getElementById("browserSearch");
+  const browserSearchClear = document.getElementById("browserSearchClear");
+  const browserSortGroup   = document.getElementById("browserSortGroup");
+  const browserList        = document.getElementById("browserList");
+  const browserResultsCount = document.getElementById("browserResultsCount");
+  const browserWatchedCount = document.getElementById("browserWatchedCount");
+
+  let browserSortOrder = "index"; // "index" | "alpha"
+  let browserQuery     = "";
+  let browserDebounce  = null;
+
+  function openBrowser() {
+    browserQuery = "";
+    browserSearch.value = "";
+    browserSearchClear.classList.add("hidden");
+    browserResultsCount.classList.add("hidden");
+    browserOverlay.classList.remove("hidden");
+    renderBrowser();
+    browserSearch.focus();
+  }
+
+  function closeBrowser() {
+    browserOverlay.classList.add("hidden");
+  }
+
+  function getBrowserItems() {
+    var q = browserQuery.trim().toLowerCase();
+    var items = MOVIES.map(function (title, i) {
+      return { title: title, index: i + 1, watched: watchedSet.has(title) };
+    });
+    if (q) {
+      items = items.filter(function (m) { return m.title.toLowerCase().indexOf(q) !== -1; });
+    }
+    if (browserSortOrder === "alpha") {
+      items = items.slice().sort(function (a, b) {
+        return a.title.toLowerCase() < b.title.toLowerCase() ? -1 : 1;
+      });
+    }
+    return items;
+  }
+
+  function renderBrowser() {
+    var items = getBrowserItems();
+    var watchedCount = watchedSet.size;
+
+    browserWatchedCount.textContent = authToken
+      ? watchedCount + " of " + MOVIES.length + " watched"
+      : MOVIES.length + " films";
+
+    if (browserQuery.trim()) {
+      browserResultsCount.textContent = items.length + " result" + (items.length !== 1 ? "s" : "");
+      browserResultsCount.classList.remove("hidden");
+    } else {
+      browserResultsCount.classList.add("hidden");
+    }
+
+    if (items.length === 0) {
+      browserList.innerHTML = '<p class="browser-no-results">No films match your search.</p>';
+      return;
+    }
+
+    var frag = document.createDocumentFragment();
+    items.forEach(function (m) {
+      var div = document.createElement("div");
+      div.className = "browser-item" + (m.watched ? " watched" : "");
+      div.dataset.title = m.title;
+      div.innerHTML =
+        '<span class="browser-item-check">&#10003;</span>' +
+        '<span class="browser-item-index">#' + m.index + '</span>' +
+        '<span class="browser-item-title">' + escapeHtml(m.title) + '</span>';
+      frag.appendChild(div);
+    });
+    browserList.innerHTML = "";
+    browserList.appendChild(frag);
+  }
+
+  // Toggle watched from browser list (event delegation)
+  browserList.addEventListener("click", async function (e) {
+    if (!authToken) return;
+    var item = e.target.closest(".browser-item");
+    if (!item) return;
+    var title = item.dataset.title;
+    try {
+      if (watchedSet.has(title)) {
+        await removeWatched(title);
+        item.classList.remove("watched");
+      } else {
+        await addWatched(title);
+        item.classList.add("watched");
+      }
+      // Update watched count in header and watched button if this is currentTitle
+      browserWatchedCount.textContent = watchedSet.size + " of " + MOVIES.length + " watched";
+      if (title === currentTitle) updateWatchedBtn();
+    } catch (e) {
+      // silent fail
+    }
+  });
+
+  // Search input
+  browserSearch.addEventListener("input", function () {
+    browserQuery = browserSearch.value;
+    browserSearchClear.classList.toggle("hidden", !browserQuery);
+    clearTimeout(browserDebounce);
+    browserDebounce = setTimeout(renderBrowser, 150);
+  });
+
+  browserSearchClear.addEventListener("click", function () {
+    browserQuery = "";
+    browserSearch.value = "";
+    browserSearchClear.classList.add("hidden");
+    browserResultsCount.classList.add("hidden");
+    renderBrowser();
+    browserSearch.focus();
+  });
+
+  // Sort buttons
+  browserSortGroup.addEventListener("click", function (e) {
+    var btn = e.target.closest(".browser-sort-btn");
+    if (!btn) return;
+    browserSortOrder = btn.dataset.sort;
+    document.querySelectorAll(".browser-sort-btn").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.sort === browserSortOrder);
+    });
+    renderBrowser();
+  });
+
+  browserClose.addEventListener("click", closeBrowser);
+  browserOverlay.addEventListener("click", function (e) {
+    if (e.target === browserOverlay) closeBrowser();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !browserOverlay.classList.contains("hidden")) {
+      closeBrowser();
+    }
+  });
+
+  browseBtn.addEventListener("click", openBrowser);
 
   // ── Init ──────────────────────────────────────────────────────────────────
   updateAuthUI();
