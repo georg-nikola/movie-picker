@@ -285,12 +285,12 @@ def run_tests(base_url: str, dns_override: bool = False):
             item_count = page.locator(".browser-item").count()
             record("Browser lists all films", item_count == movies_count, f"{item_count} items")
 
-            # Search filters correctly
-            page.locator("#browserSearch").fill("godfather")
+            # Search filters correctly ("american" matches American Psycho etc.)
+            page.locator("#browserSearch").fill("american")
             page.wait_for_timeout(300)
             filtered_count = page.locator(".browser-item").count()
             record("Search filters film list", filtered_count > 0 and filtered_count < item_count,
-                   f"{filtered_count} results for 'godfather'")
+                   f"{filtered_count} results for 'american'")
 
             # Clear search
             page.evaluate("document.getElementById('browserSearchClear').click()")
