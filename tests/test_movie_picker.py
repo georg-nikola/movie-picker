@@ -268,6 +268,62 @@ def run_tests(base_url: str, dns_override: bool = False):
             except Exception as e:
                 record("Auth flow", False, str(e)[:80])
 
+        # ── Test 14: Browser overlay ──────────────────────────────────────────
+        print("\n[Movie Browser]")
+        try:
+            record("Browse Films button exists", page.locator("#browseBtn").count() == 1)
+            record("Browser overlay exists",     page.locator("#browserOverlay").count() == 1)
+            record("Browser overlay hidden initially", not page.locator("#browserOverlay").is_visible())
+
+            page.evaluate("document.getElementById('browseBtn').click()")
+            page.wait_for_timeout(400)
+            record("Browser overlay opens on Browse Films click", page.locator("#browserOverlay").is_visible())
+            record("Browser search input exists",  page.locator("#browserSearch").count() == 1)
+            record("Browser list has film items",  page.locator(".browser-item").count() > 0)
+
+            # All 500 films should be listed
+            item_count = page.locator(".browser-item").count()
+            record("Browser lists all films", item_count == movies_count, f"{item_count} items")
+
+            # Search filters correctly
+            page.locator("#browserSearch").fill("godfather")
+            page.wait_for_timeout(300)
+            filtered_count = page.locator(".browser-item").count()
+            record("Search filters film list", filtered_count > 0 and filtered_count < item_count,
+                   f"{filtered_count} results for 'godfather'")
+
+            # Clear search
+            page.evaluate("document.getElementById('browserSearchClear').click()")
+            page.wait_for_timeout(200)
+            record("Clear button restores full list", page.locator(".browser-item").count() == item_count)
+
+            # Sort: switch to alphabetical
+            page.evaluate("document.querySelector('[data-sort=\"alpha\"]').click()")
+            page.wait_for_timeout(200)
+            first_alpha = page.locator(".browser-item .browser-item-title").first.inner_text()
+            record("Alphabetical sort is active", page.locator(".browser-sort-btn.active").get_attribute("data-sort") == "alpha")
+
+            # Switch back to curated
+            page.evaluate("document.querySelector('[data-sort=\"index\"]').click()")
+            page.wait_for_timeout(200)
+            record("Curated sort restores original order",
+                   page.locator(".browser-sort-btn.active").get_attribute("data-sort") == "index")
+
+            # Close via × button
+            page.evaluate("document.getElementById('browserClose').click()")
+            page.wait_for_timeout(300)
+            record("Browser closes on × button", not page.locator("#browserOverlay").is_visible())
+
+            # Close via Escape key
+            page.evaluate("document.getElementById('browseBtn').click()")
+            page.wait_for_timeout(300)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(300)
+            record("Browser closes on Escape key", not page.locator("#browserOverlay").is_visible())
+
+        except Exception as e:
+            record("Browser overlay interactions", False, str(e)[:80])
+
         # ── Final: No JS errors throughout ────────────────────────────────────
         print("\n[Final Check]")
         record("No JS errors during any interaction", len(console_errors) == 0,
