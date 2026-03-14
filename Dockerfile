@@ -1,5 +1,5 @@
 # Build stage - validate static files exist and are non-empty
-FROM alpine:3.19 AS validator
+FROM alpine:3.21 AS validator
 
 COPY index.html /validate/
 COPY style.css /validate/
@@ -12,7 +12,7 @@ RUN test -s /validate/index.html && \
     test -s /validate/movies.js
 
 # Production stage
-FROM nginx:1.25-alpine
+FROM nginx:stable-alpine3.23
 
 RUN addgroup -g 101 -S nginx || true && \
     adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx || true

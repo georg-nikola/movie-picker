@@ -1,6 +1,6 @@
 image:
   repository: postgres
-  tag: "16.1-alpine"
+  tag: "16.13-alpine3.23"
   pullPolicy: IfNotPresent
 
 fullnameOverride: "postgresql"
