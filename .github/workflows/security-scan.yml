@@ -125,7 +125,7 @@ jobs:
         uses: kubescape/github-action@main
         continue-on-error: true
         with:
-          framework: NSA,MITRE
+          frameworks: NSA,MITRE
           files: helm/
           format: pretty-printer
           severityThreshold: high
