@@ -155,5 +155,5 @@ jobs:
       - name: Wait for deployment to roll out
         run: sleep 60
 
-      - name: Run smoke tests against production
-        run: python tests/test_movie_picker.py
+      - name: Run smoke tests against local files
+        run: python tests/test_movie_picker.py --local

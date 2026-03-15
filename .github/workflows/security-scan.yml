@@ -51,7 +51,7 @@ jobs:
           "
 
       - name: pip-audit — dependency CVEs
-        run: pip-audit -r backend/requirements.txt --output-format json --output pip-audit-report.json || true
+        run: pip-audit -r backend/requirements.txt -f json -o pip-audit-report.json || true
 
       - name: pip-audit — print results
         run: |
