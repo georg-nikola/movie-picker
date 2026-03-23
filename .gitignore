@@ -15,3 +15,6 @@ android/captures/
 
 # macOS
 .DS_Store
+
+# PostgreSQL TLS certificates (generated locally)
+pg-certs/
