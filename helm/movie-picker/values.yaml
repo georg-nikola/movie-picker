@@ -1,8 +1,7 @@
 replicaCount: 2
 
 image:
-  registry: ghcr.io
-  repository: georg-nikola/movie-picker
+  repository: ghcr.io/georg-nikola/movie-picker
   pullPolicy: Always
   tag: "latest"
 
