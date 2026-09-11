@@ -160,7 +160,7 @@ def run_tests(base_url: str, dns_override: bool = False):
         print("\n[Auth Modal UI]")
         modal_ui_ok = True
         try:
-            # Use JS click to bypass any Cloudflare overlay that may intercept events
+            # JS click: a Cloudflare challenge overlay on our own site can swallow pointer events
             page.evaluate("document.getElementById('loginBtn').click()")
             page.wait_for_timeout(400)
             modal_visible = page.locator("#authModal").is_visible()
