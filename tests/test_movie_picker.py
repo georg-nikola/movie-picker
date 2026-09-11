@@ -18,14 +18,13 @@ import time
 from playwright.sync_api import sync_playwright, expect
 
 PROD_URL   = "https://movie-picker.georg-nikola.com"
-PROD_IP    = "104.21.12.221"
 LOCAL_FILE = f"file://{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/index.html"
 
 PASS = "\033[92m✓\033[0m"
 FAIL = "\033[91m✗\033[0m"
 
 
-def run_tests(base_url: str, dns_override: bool = False):
+def run_tests(base_url: str):
     results = []
 
     def record(name, passed, detail=""):
@@ -33,12 +32,8 @@ def run_tests(base_url: str, dns_override: bool = False):
         print(f"  {icon} {name}" + (f"  ({detail})" if detail else ""))
         results.append((name, passed))
 
-    launch_args = []
-    if dns_override:
-        launch_args.append(f"--host-resolver-rules=MAP movie-picker.georg-nikola.com {PROD_IP}")
-
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=launch_args)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page    = context.new_page()
 
@@ -342,13 +337,13 @@ def main():
     args = parser.parse_args()
 
     if args.local:
-        url, dns = LOCAL_FILE, False
+        url   = LOCAL_FILE
         label = "LOCAL (file://)"
     elif args.url:
-        url, dns = args.url, False
+        url   = args.url
         label = f"CUSTOM ({url})"
     else:
-        url, dns = PROD_URL, True
+        url   = PROD_URL
         label = f"PRODUCTION ({PROD_URL})"
 
     print(f"\n{'='*55}")
@@ -356,7 +351,7 @@ def main():
     print(f"  Target: {label}")
     print(f"{'='*55}")
     t0      = time.time()
-    results = run_tests(url, dns_override=dns)
+    results = run_tests(url)
     elapsed = time.time() - t0
 
     passed = sum(1 for _, ok in results if ok)
