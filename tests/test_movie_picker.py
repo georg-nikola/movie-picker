@@ -1,15 +1,22 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["playwright>=1.62,<2"]
+# ///
 """
 Production smoke tests for movie-picker.georg-nikola.com
 
-Usage:
+Usage (uv resolves the dependency from the script header):
+  # One-time: download the headless browser
+  uvx playwright@1.62 install chromium-headless-shell
+
   # Against production (via Cloudflare)
-  python tests/test_movie_picker.py
+  uv run tests/test_movie_picker.py
 
   # Against a local port-forward  (kubectl port-forward svc/movie-picker 8888:80 -n default)
-  python tests/test_movie_picker.py --url http://localhost:8888
+  uv run tests/test_movie_picker.py --url http://localhost:8888
 
   # Against local file (no server needed)
-  python tests/test_movie_picker.py --local
+  uv run tests/test_movie_picker.py --local
 """
 import argparse
 import os
