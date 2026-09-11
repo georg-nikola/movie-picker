@@ -55,6 +55,7 @@ def run_tests(base_url: str):
             page.goto(base_url, timeout=30000)
             page.wait_for_load_state("networkidle")
             record("Page loads successfully", True)
+            record("Plausible tag present", page.locator('script[data-domain="movie-picker.georg-nikola.com"]').count() == 1)
         except Exception as e:
             record("Page loads successfully", False, str(e))
             browser.close()
