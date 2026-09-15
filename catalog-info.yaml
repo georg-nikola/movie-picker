@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: movie-picker
+  annotations:
+    github.com/project-slug: georg-nikola/movie-picker
+    backstage.io/kubernetes-namespace: default
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name in (movie-picker,movie-picker-api)
+    argocd/app-name: movie-picker
+spec:
+  type: website
+  lifecycle: production
+  owner: platform
+  system: home-cluster
